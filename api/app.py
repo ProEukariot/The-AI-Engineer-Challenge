@@ -27,7 +27,7 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     developer_message: str  # Message from the developer/system
     user_message: str      # Message from the user
-    model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
+    model: Optional[str] = "gpt-4.1"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
 
 # Define the main chat endpoint that handles POST requests
@@ -35,15 +35,16 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest):
     try:
         # Initialize OpenAI client with the provided API key
+        print("client BEFORE")
         client = OpenAI(api_key=request.api_key)
-        
+        print("client AFTER", client._version)
         # Create an async generator function for streaming responses
         async def generate():
             # Create a streaming chat completion request
             stream = client.chat.completions.create(
-                model=request.model,
+                model=request.model or "gpt-4.1",
                 messages=[
-                    {"role": "developer", "content": request.developer_message},
+                    {"role": "system", "content": request.developer_message},
                     {"role": "user", "content": request.user_message}
                 ],
                 stream=True  # Enable streaming response
@@ -59,6 +60,7 @@ async def chat(request: ChatRequest):
     
     except Exception as e:
         # Handle any errors that occur during processing
+        print("error", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 # Define a health check endpoint to verify API status
