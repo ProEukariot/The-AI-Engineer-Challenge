@@ -72,6 +72,13 @@ export default function Home() {
 
   return (
     <div className="font-sans min-h-screen p-6 sm:p-10 flex flex-col gap-6 max-w-3xl mx-auto">
+      {/* top-right error banner */}
+      {error ? (
+        <div className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg max-w-md">
+          {error}
+        </div>
+      ) : null}
+
       <h1 className="text-2xl font-semibold">Simple Chat UI</h1>
 
       <div className="flex flex-col gap-3">
@@ -142,7 +149,6 @@ export default function Home() {
             <span>Send</span>
           )}
         </button>
-        {error ? <span className="text-red-600 text-sm">{error}</span> : null}
       </div>
 
       <div className="flex flex-col gap-2">
