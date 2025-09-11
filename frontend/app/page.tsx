@@ -78,13 +78,6 @@ export default function Home() {
           onChange={(e) => setApiBaseUrl(e.target.value)}
           placeholder="http://localhost:8000"
         />
-        <button
-          className="border rounded px-3 h-10 w-max bg-black text-white disabled:opacity-50"
-          onClick={checkHealth}
-          disabled={isLoading}
-        >
-          Check Health ({health})
-        </button>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -100,11 +93,16 @@ export default function Home() {
 
       <div className="flex flex-col gap-3">
         <label className="text-sm font-medium">Model</label>
-        <input
+        <select
           className="border rounded px-3 h-10 bg-white text-black"
           value={model}
           onChange={(e) => setModel(e.target.value)}
-        />
+        >
+          <option value="gpt-4.1">gpt-4.1</option>
+          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+        </select>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -142,6 +140,17 @@ export default function Home() {
           {responseText || ""}
         </pre>
       </div>
+
+      {/* Floating health button */}
+      <button
+        aria-label="Check API health"
+        title={`Health: ${health}`}
+        className="fixed bottom-4 right-4 border rounded-full px-4 h-12 bg-black text-white shadow-lg disabled:opacity-50"
+        onClick={checkHealth}
+        disabled={isLoading}
+      >
+        Health: {health}
+      </button>
     </div>
   );
 }
