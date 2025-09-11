@@ -14,11 +14,13 @@ export default function Home() {
   const [userMessage, setUserMessage] = useState<string>("");
   const [health, setHealth] = useState<string>("unknown");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isHealthLoading, setIsHealthLoading] = useState<boolean>(false);
   const [responseText, setResponseText] = useState<string>("");
   const [error, setError] = useState<string>("");
 
   async function checkHealth() {
     setError("");
+    setIsHealthLoading(true);
     try {
       const res = await fetch(`${apiBaseUrl}/api/health`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
@@ -27,6 +29,8 @@ export default function Home() {
     } catch (e: any) {
       setHealth("error");
       setError(e?.message || "Health check error");
+    } finally {
+      setIsHealthLoading(false);
     }
   }
 
@@ -125,11 +129,18 @@ export default function Home() {
 
       <div className="flex items-center gap-3">
         <button
-          className="border rounded px-4 h-10 bg-black text-white disabled:opacity-50"
+          className="border rounded px-4 h-10 bg-black text-white disabled:opacity-50 flex items-center gap-2"
           onClick={sendMessage}
           disabled={isLoading || !apiKey || !userMessage}
         >
-          {isLoading ? "Streaming..." : "Send"}
+          {isLoading ? (
+            <>
+              <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              <span>Streaming…</span>
+            </>
+          ) : (
+            <span>Send</span>
+          )}
         </button>
         {error ? <span className="text-red-600 text-sm">{error}</span> : null}
       </div>
@@ -145,11 +156,18 @@ export default function Home() {
       <button
         aria-label="Check API health"
         title={`Health: ${health}`}
-        className="fixed bottom-4 right-4 border rounded-full px-4 h-12 bg-black text-white shadow-lg disabled:opacity-50"
+        className="fixed bottom-4 right-4 border rounded-full px-4 h-12 bg-black text-white shadow-lg disabled:opacity-50 flex items-center gap-2"
         onClick={checkHealth}
-        disabled={isLoading}
+        disabled={isHealthLoading}
       >
-        Health: {health}
+        {isHealthLoading ? (
+          <>
+            <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            <span>Checking…</span>
+          </>
+        ) : (
+          <span>Health: {health}</span>
+        )}
       </button>
     </div>
   );
