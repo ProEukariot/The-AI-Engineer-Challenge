@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function Home() {
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(
@@ -17,13 +17,6 @@ export default function Home() {
   const [isHealthLoading, setIsHealthLoading] = useState<boolean>(false);
   const [responseText, setResponseText] = useState<string>("");
   const [error, setError] = useState<string>("");
-
-  // Auto-dismiss error after 5 seconds
-  useEffect(() => {
-    if (!error) return;
-    const timer = setTimeout(() => setError(""), 5000);
-    return () => clearTimeout(timer);
-  }, [error]);
 
   async function checkHealth() {
     setError("");
@@ -79,20 +72,6 @@ export default function Home() {
 
   return (
     <div className="font-sans min-h-screen p-6 sm:p-10 flex flex-col gap-6 max-w-6xl mx-auto">
-      {/* top-right error banner */}
-      {error ? (
-        <div className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg max-w-md flex items-start gap-3" role="alert">
-          <div className="flex-1">{error}</div>
-          <button
-            aria-label="Dismiss error"
-            className="text-white/90 hover:text-white"
-            onClick={() => setError("")}
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
-
       <h1 className="text-2xl font-semibold">Simple Chat UI</h1>
 
       {/* Two-column grid: inputs (left), output (right) */}
@@ -176,6 +155,11 @@ export default function Home() {
           <pre className="border rounded p-3 whitespace-pre-wrap min-h-[400px] bg-white text-black">
             {responseText || ""}
           </pre>
+          {error ? (
+            <div className="text-red-600 text-sm border border-red-300 bg-red-50 rounded p-3">
+              {error}
+            </div>
+          ) : null}
         </div>
       </div>
 
