@@ -3,9 +3,7 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [apiBaseUrl, setApiBaseUrl] = useState<string>(
-    process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
-  );
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const [apiKey, setApiKey] = useState<string>("");
   const [model, setModel] = useState<string>("gpt-4.1");
   const [developerMessage, setDeveloperMessage] = useState<string>(
@@ -78,16 +76,6 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Left: Inputs */}
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3">
-            <label className="text-sm font-medium">API Base URL</label>
-            <input
-              className="border rounded px-3 h-10 bg-white text-black"
-              value={apiBaseUrl}
-              onChange={(e) => setApiBaseUrl(e.target.value)}
-              placeholder="http://localhost:8000"
-            />
-          </div>
-
           <div className="flex flex-col gap-3">
             <label className="text-sm font-medium">OpenAI API Key</label>
             <input
