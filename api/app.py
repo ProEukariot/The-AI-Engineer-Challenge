@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import Pydantic for data validation and settings management
 from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 import os
 import tempfile
 import shutil
@@ -118,8 +118,16 @@ async def upload_pdf(
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             chunks = text_splitter.split_texts(pdf_loader.documents)
             
-            # Create vector database and populate it
-            vector_db = VectorDatabase()
+            # Create vector database with custom embedding model that uses the provided API key
+            from aimakerspace.openai_utils.embedding import EmbeddingModel
+            
+            # Create a custom embedding model with the provided API key
+            embedding_model = EmbeddingModel()
+            embedding_model.openai_api_key = api_key
+            embedding_model.client = OpenAI(api_key=api_key)
+            embedding_model.async_client = AsyncOpenAI(api_key=api_key)
+            
+            vector_db = VectorDatabase(embedding_model)
             await vector_db.abuild_from_list(chunks)
             
             # Generate unique PDF ID
@@ -159,6 +167,12 @@ async def rag_chat(request: RAGChatRequest):
         
         pdf_data = pdf_storage[request.pdf_id]
         vector_db = pdf_data["vector_db"]
+        
+        # Update the embedding model with the current API key for search
+        if hasattr(vector_db, 'embedding_model'):
+            vector_db.embedding_model.openai_api_key = request.api_key
+            vector_db.embedding_model.client = OpenAI(api_key=request.api_key)
+            vector_db.embedding_model.async_client = AsyncOpenAI(api_key=request.api_key)
         
         # Search for relevant chunks
         relevant_chunks = vector_db.search_by_text(
@@ -229,4 +243,4 @@ async def list_pdfs():
 if __name__ == "__main__":
     import uvicorn
     # Start the server on all network interfaces (0.0.0.0) on port 8000
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

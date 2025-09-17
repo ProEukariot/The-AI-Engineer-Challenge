@@ -10,7 +10,7 @@ interface PDF {
 }
 
 export default function Home() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8001";
   const [apiKey, setApiKey] = useState<string>("");
   const [model, setModel] = useState<string>("gpt-4.1");
   const [developerMessage, setDeveloperMessage] = useState<string>(
