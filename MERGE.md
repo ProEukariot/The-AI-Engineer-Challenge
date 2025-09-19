@@ -1,149 +1,108 @@
-# Merge Instructions for PDF Upload and RAG Functionality
-
-This document provides instructions for merging the PDF upload and RAG functionality feature branch back to the main branch.
+# Merge Instructions for Feature: Remove General Chat Tab
 
 ## Overview
-
-This feature adds comprehensive PDF upload and RAG (Retrieval Augmented Generation) functionality to the existing chat application:
-
-- **Backend**: New endpoints for PDF upload, processing, and RAG-based chat
-- **Frontend**: Tabbed interface with PDF upload and RAG chat capabilities
-- **RAG System**: Uses the `aimakerspace` library for PDF processing and vector search
+This feature removes the general chat functionality from the application, focusing solely on PDF RAG (Retrieval-Augmented Generation) chat capabilities.
 
 ## Changes Made
-
-### Backend Changes (`api/app.py`)
-- Added PDF upload endpoint (`/api/upload-pdf`)
-- Added RAG chat endpoint (`/api/rag-chat`)
-- Added PDF listing endpoint (`/api/pdfs`)
-- Integrated `aimakerspace` library for PDF processing and vector operations
-- Added new data models for RAG requests
-
-### Frontend Changes (`frontend/app/page.tsx`)
-- Added tabbed interface (General Chat / PDF RAG Chat)
-- Added PDF upload functionality
-- Added PDF selection dropdown
-- Added RAG chat interface
-- Enhanced UI with proper styling and error handling
-
-### Dependencies (`api/requirements.txt`)
-- Added `PyPDF2==3.0.1` for PDF processing
-- Added `numpy>=1.21.0` for vector operations
-- Added `python-dotenv==1.0.0` for environment variable management
+- **Frontend**: Removed general chat tab, UI components, and state management
+- **Backend**: Removed general chat API endpoint and related Pydantic models
+- **Documentation**: Updated README to reflect PDF RAG focus
+- **UI/UX**: Simplified interface to focus on PDF upload and chat functionality
 
 ## Merge Instructions
 
 ### Option 1: GitHub Pull Request (Recommended)
-
-1. **Push the feature branch to GitHub:**
+1. Push the feature branch to GitHub:
    ```bash
-   git push origin feature/pdf-upload-rag
+   git push origin feature/remove-general-chat-tab
    ```
 
-2. **Create a Pull Request:**
-   - Go to the GitHub repository
-   - Click "Compare & pull request" for the `feature/pdf-upload-rag` branch
-   - Add a descriptive title: "Add PDF Upload and RAG Functionality"
+2. Create a Pull Request on GitHub:
+   - Go to the repository on GitHub
+   - Click "Compare & pull request" for the `feature/remove-general-chat-tab` branch
+   - Add a descriptive title: "Remove general chat tab and focus on PDF RAG only"
    - Add description explaining the changes
-   - Request review from team members
-   - Merge the PR after approval
+   - Request review from team members if applicable
+   - Merge the PR once approved
 
 ### Option 2: GitHub CLI
-
-1. **Push the feature branch:**
+1. Push the feature branch:
    ```bash
-   git push origin feature/pdf-upload-rag
+   git push origin feature/remove-general-chat-tab
    ```
 
-2. **Create and merge PR using GitHub CLI:**
+2. Create and merge the PR using GitHub CLI:
    ```bash
-   # Create pull request
-   gh pr create --title "Add PDF Upload and RAG Functionality" \
-                --body "This PR adds comprehensive PDF upload and RAG functionality using the aimakerspace library." \
-                --base main \
-                --head feature/pdf-upload-rag
+   # Create the PR
+   gh pr create --title "Remove general chat tab and focus on PDF RAG only" \
+     --body "This PR removes the general chat functionality and focuses the application on PDF RAG capabilities only. Changes include:
+     - Removed general chat tab and UI components
+     - Removed general chat API endpoint
+     - Simplified state management
+     - Updated documentation
+     - Improved UX for PDF-focused workflow"
 
-   # Merge the pull request
-   gh pr merge --merge --delete-branch
+   # Merge the PR (after review)
+   gh pr merge --squash
    ```
 
-### Option 3: Direct Git Merge (Local)
+### Option 3: Direct Merge (Not Recommended for Production)
+If you need to merge directly without a PR:
+```bash
+# Switch to main branch
+git checkout main
 
-1. **Switch to main branch:**
-   ```bash
-   git checkout main
-   ```
+# Merge the feature branch
+git merge --squash feature/remove-general-chat-tab
 
-2. **Pull latest changes:**
-   ```bash
-   git pull origin main
-   ```
+# Commit the merge
+git commit -m "Merge feature: Remove general chat tab and focus on PDF RAG only"
 
-3. **Merge feature branch:**
-   ```bash
-   git merge feature/pdf-upload-rag
-   ```
+# Push to main
+git push origin main
 
-4. **Push to main:**
-   ```bash
-   git push origin main
-   ```
-
-5. **Delete feature branch:**
-   ```bash
-   git branch -d feature/pdf-upload-rag
-   git push origin --delete feature/pdf-upload-rag
-   ```
+# Delete the feature branch
+git branch -d feature/remove-general-chat-tab
+git push origin --delete feature/remove-general-chat-tab
+```
 
 ## Testing After Merge
+1. **Frontend Testing**:
+   - Verify PDF upload functionality works
+   - Test PDF selection and RAG chat
+   - Ensure UI is clean and focused on PDF functionality
 
-1. **Install dependencies:**
+2. **Backend Testing**:
+   - Test PDF upload endpoint (`/api/upload-pdf`)
+   - Test RAG chat endpoint (`/api/rag-chat`)
+   - Verify health check endpoint (`/api/health`)
+   - Ensure general chat endpoint is no longer available
+
+3. **Integration Testing**:
+   - Test complete PDF upload to chat workflow
+   - Verify error handling for missing PDFs
+   - Test with multiple PDFs
+
+## Rollback Plan
+If issues are discovered after merge:
+1. Revert the merge commit:
    ```bash
-   cd api
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
+   git revert <merge-commit-hash>
    ```
+2. Or create a hotfix branch to restore general chat functionality if needed
 
-2. **Start backend:**
-   ```bash
-   cd api
-   source venv/bin/activate
-   python app.py
-   ```
+## Files Modified
+- `frontend/app/page.tsx` - Removed general chat UI and state
+- `api/app.py` - Removed general chat endpoint and models
+- `api/README.md` - Updated documentation
 
-3. **Start frontend:**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+## Breaking Changes
+- **API**: `/api/chat` endpoint has been removed
+- **Frontend**: General chat tab and functionality removed
+- **User Experience**: Users can no longer chat with the LLM directly without a PDF
 
-4. **Test functionality:**
-   - Upload a PDF file
-   - Ask questions about the PDF content
-   - Verify RAG responses are based on PDF content only
-
-## Key Features
-
-- **PDF Upload**: Users can upload PDF files which are automatically processed and indexed
-- **Vector Search**: Uses embeddings to find relevant content from PDFs
-- **RAG Chat**: Chat interface that only answers based on uploaded PDF content
-- **Context-Aware**: LLM is instructed to only use information from the provided PDF context
-- **Streaming Responses**: Real-time streaming of AI responses
-- **Error Handling**: Comprehensive error handling for upload and processing failures
-
-## Dependencies
-
-The application now requires:
-- Python 3.8+ with virtual environment
-- Node.js 18+ for frontend
-- OpenAI API key for both general chat and RAG functionality
-- Sufficient memory for vector operations (PDFs are processed in-memory)
-
-## Notes
-
-- PDFs are processed and stored in memory (not persisted to disk)
-- Vector databases are created per PDF upload
-- The system supports multiple PDFs but processes them independently
-- All PDF processing uses the `aimakerspace` library as requested
+## Benefits
+- Simplified user interface focused on PDF RAG use case
+- Reduced code complexity and maintenance overhead
+- Clearer user workflow for PDF-based interactions
+- Better performance due to removed unused functionality

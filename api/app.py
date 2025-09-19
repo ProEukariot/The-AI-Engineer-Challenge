@@ -1,18 +1,18 @@
 # Import required FastAPI components for building the API
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 # Import Pydantic for data validation and settings management
 from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
 from openai import OpenAI, AsyncOpenAI
+from dotenv import load_dotenv
 import os
-import tempfile
-import shutil
 import time
 import uuid
 from typing import Optional, Dict, Any
-from pathlib import Path
+
+load_dotenv()
 
 # Get OpenAI API key from environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -22,11 +22,12 @@ if not OPENAI_API_KEY:
 # Import aimakerspace components for RAG functionality
 import sys
 sys.path.append('/root/py/The-AI-Engineer-Challenge')
-from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
+from aimakerspace.text_utils import CharacterTextSplitter
 from aimakerspace.vectordatabase import VectorDatabase
+from aimakerspace.web_scraper import WebScraper
 
 # Initialize FastAPI application with a title
-app = FastAPI(title="OpenAI Chat API")
+app = FastAPI(title="Docs Helper API")
 
 # Configure CORS (Cross-Origin Resource Sharing) middleware
 # This allows the API to be accessed from different domains/origins
@@ -39,14 +40,19 @@ app.add_middleware(
 )
 
 
+# Define the data model for web scraping requests
+class WebScrapeRequest(BaseModel):
+    url: str               # URL to scrape
+    model: Optional[str] = "gpt-4.1"  # Optional model selection with default
+
 # Define the data model for RAG chat requests
 class RAGChatRequest(BaseModel):
     user_message: str      # Message from the user
     model: Optional[str] = "gpt-4.1"  # Optional model selection with default
-    pdf_id: str           # ID of the uploaded PDF to use for context
+    doc_id: str           # ID of the scraped document to use for context
 
-# Global state for managing PDFs and vector databases
-pdf_storage: Dict[str, Dict[str, Any]] = {}  # Store PDF metadata and vector databases
+# Global state for managing scraped documents and vector databases
+doc_storage: Dict[str, Dict[str, Any]] = {}  # Store document metadata and vector databases
 
 
 # Define a health check endpoint to verify API status
@@ -54,83 +60,79 @@ pdf_storage: Dict[str, Dict[str, Any]] = {}  # Store PDF metadata and vector dat
 async def health_check():
     return {"status": "ok"}
 
-# PDF Upload endpoint
-@app.post("/api/upload-pdf")
-async def upload_pdf(
-    file: UploadFile = File(...)
-):
-    """Upload and process a PDF file for RAG functionality."""
+# Web scraping endpoint
+@app.post("/api/scrape-url")
+async def scrape_url(request: WebScrapeRequest):
+    """Scrape a webpage and process it for RAG functionality."""
     try:
-        # Validate file type
-        if not file.filename.lower().endswith('.pdf'):
-            raise HTTPException(status_code=400, detail="File must be a PDF")
+        # Initialize web scraper
+        scraper = WebScraper()
         
-        # Create temporary file to store the uploaded PDF
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            shutil.copyfileobj(file.file, tmp_file)
-            tmp_path = tmp_file.name
+        # Scrape the URL
+        scraped_data = scraper.scrape_url(request.url)
         
-        try:
-            # Load PDF using aimakerspace library
-            pdf_loader = PDFLoader(tmp_path)
-            pdf_loader.load_file()
-            
-            if not pdf_loader.documents:
-                raise HTTPException(status_code=400, detail="Could not extract text from PDF")
-            
-            # Split the document into chunks
-            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-            chunks = text_splitter.split_texts(pdf_loader.documents)
-            
-            # Create vector database with custom embedding model that uses the provided API key
-            from aimakerspace.openai_utils.embedding import EmbeddingModel
-            
-            # Create a custom embedding model with the environment API key
-            embedding_model = EmbeddingModel()
-            embedding_model.openai_api_key = OPENAI_API_KEY
-            embedding_model.client = OpenAI(api_key=OPENAI_API_KEY)
-            embedding_model.async_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-            
-            vector_db = VectorDatabase(embedding_model)
-            await vector_db.abuild_from_list(chunks)
-            
-            # Generate unique PDF ID
-            pdf_id = str(uuid.uuid4())
-            
-            # Store PDF metadata and vector database
-            pdf_storage[pdf_id] = {
-                "filename": file.filename,
-                "vector_db": vector_db,
-                "chunks": chunks,
-                "upload_time": str(time.time())
-            }
-            
-            return {
-                "pdf_id": pdf_id,
-                "filename": file.filename,
-                "chunks_count": len(chunks),
-                "message": "PDF uploaded and indexed successfully"
-            }
-            
-        finally:
-            # Clean up temporary file
-            os.unlink(tmp_path)
-            
+        if scraped_data.get('error'):
+            raise HTTPException(status_code=400, detail=f"Failed to scrape URL: {scraped_data['error']}")
+        
+        if not scraped_data.get('content'):
+            raise HTTPException(status_code=400, detail="No content extracted from the URL")
+        
+        # Split the content into chunks
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        chunks = text_splitter.split_texts([scraped_data['content']])
+        
+        # Create vector database with custom embedding model
+        from aimakerspace.openai_utils.embedding import EmbeddingModel
+        
+        # Create a custom embedding model with the environment API key
+        embedding_model = EmbeddingModel()
+        embedding_model.openai_api_key = OPENAI_API_KEY
+        embedding_model.client = OpenAI(api_key=OPENAI_API_KEY)
+        embedding_model.async_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        
+        vector_db = VectorDatabase(embedding_model)
+        await vector_db.abuild_from_list(chunks)
+        
+        # Generate unique document ID
+        doc_id = str(uuid.uuid4())
+        
+        # Store document metadata and vector database
+        doc_storage[doc_id] = {
+            "url": scraped_data['url'],
+            "title": scraped_data.get('title', ''),
+            "vector_db": vector_db,
+            "chunks": chunks,
+            "scrape_time": str(time.time()),
+            "word_count": scraped_data.get('word_count', 0),
+            "char_count": scraped_data.get('char_count', 0)
+        }
+        
+        return {
+            "doc_id": doc_id,
+            "url": scraped_data['url'],
+            "title": scraped_data.get('title', ''),
+            "chunks_count": len(chunks),
+            "word_count": scraped_data.get('word_count', 0),
+            "message": "URL scraped and indexed successfully"
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
+        print(f"Error processing URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing URL: {str(e)}")
 
 # RAG Chat endpoint
 @app.post("/api/rag-chat")
 async def rag_chat(request: RAGChatRequest):
-    """Chat with the PDF using RAG functionality."""
+    """Chat with the scraped document using RAG functionality."""
     try:
-        # Check if PDF exists
-        if request.pdf_id not in pdf_storage:
-            raise HTTPException(status_code=404, detail="PDF not found")
+        # Check if document exists
+        if request.doc_id not in doc_storage:
+            raise HTTPException(status_code=404, detail="Document not found")
         
-        pdf_data = pdf_storage[request.pdf_id]
-        vector_db = pdf_data["vector_db"]
+        doc_data = doc_storage[request.doc_id]
+        vector_db = doc_data["vector_db"]
         
         # Update the embedding model with the environment API key for search
         if hasattr(vector_db, 'embedding_model'):
@@ -148,16 +150,25 @@ async def rag_chat(request: RAGChatRequest):
         # Create context from relevant chunks
         context = "\n\n".join(relevant_chunks)
         
+        # Get document metadata for context
+        doc_title = doc_data.get('title', 'Unknown Document')
+        doc_url = doc_data.get('url', 'Unknown URL')
+        
         # Create system message that instructs the LLM to only use the provided context
-        system_message = f"""You are a helpful assistant that answers questions based ONLY on the provided context from a PDF document. 
+        system_message = f"""You are a helpful assistant that answers questions based ONLY on the provided context from a scraped web document. 
+
+DOCUMENT INFORMATION:
+- Title: {doc_title}
+- URL: {doc_url}
 
 IMPORTANT RULES:
 - Only answer questions using information from the provided context below
 - If the answer cannot be found in the context, say "I cannot find that information in the provided document"
 - Do not make up or infer information that is not explicitly stated in the context
 - Be precise and cite specific parts of the context when relevant
+- When referencing information, mention that it comes from the scraped document
 
-Context from the PDF:
+Context from the document:
 {context}"""
         
         # Initialize OpenAI client
@@ -187,24 +198,26 @@ Context from the PDF:
         print(f"Error in RAG chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# List uploaded PDFs endpoint
-@app.get("/api/pdfs")
-async def list_pdfs():
-    """List all uploaded PDFs."""
+# List scraped documents endpoint
+@app.get("/api/documents")
+async def list_documents():
+    """List all scraped documents."""
     return {
-        "pdfs": [
+        "documents": [
             {
-                "pdf_id": pdf_id,
-                "filename": data["filename"],
+                "doc_id": doc_id,
+                "url": data["url"],
+                "title": data.get("title", "Untitled"),
                 "chunks_count": len(data["chunks"]),
-                "upload_time": data["upload_time"]
+                "word_count": data.get("word_count", 0),
+                "scrape_time": data["scrape_time"]
             }
-            for pdf_id, data in pdf_storage.items()
+            for doc_id, data in doc_storage.items()
         ]
     }
 
 # Entry point for running the application directly
 if __name__ == "__main__":
     import uvicorn
-    # Start the server on all network interfaces (0.0.0.0) on port 8000
+    # Start the server on all network interfaces (0.0.0.0) on port 8001
     uvicorn.run(app, host="0.0.0.0", port=8001)
