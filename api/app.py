@@ -14,6 +14,11 @@ import uuid
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+# Get OpenAI API key from environment variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required but not set")
+
 # Import aimakerspace components for RAG functionality
 import sys
 sys.path.append('/root/py/The-AI-Engineer-Challenge')
@@ -33,56 +38,16 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers in requests
 )
 
-# Define the data model for chat requests using Pydantic
-# This ensures incoming request data is properly validated
-class ChatRequest(BaseModel):
-    developer_message: str  # Message from the developer/system
-    user_message: str      # Message from the user
-    model: Optional[str] = "gpt-4.1"  # Optional model selection with default
-    api_key: str          # OpenAI API key for authentication
 
 # Define the data model for RAG chat requests
 class RAGChatRequest(BaseModel):
     user_message: str      # Message from the user
     model: Optional[str] = "gpt-4.1"  # Optional model selection with default
-    api_key: str          # OpenAI API key for authentication
     pdf_id: str           # ID of the uploaded PDF to use for context
 
 # Global state for managing PDFs and vector databases
 pdf_storage: Dict[str, Dict[str, Any]] = {}  # Store PDF metadata and vector databases
 
-# Define the main chat endpoint that handles POST requests
-@app.post("/api/chat")
-async def chat(request: ChatRequest):
-    try:
-        # Initialize OpenAI client with the provided API key
-        print("client BEFORE")
-        client = OpenAI(api_key=request.api_key)
-        print("client AFTER", client._version)
-        # Create an async generator function for streaming responses
-        async def generate():
-            # Create a streaming chat completion request
-            stream = client.chat.completions.create(
-                model=request.model or "gpt-4.1",
-                messages=[
-                    {"role": "system", "content": request.developer_message},
-                    {"role": "user", "content": request.user_message}
-                ],
-                stream=True  # Enable streaming response
-            )
-            
-            # Yield each chunk of the response as it becomes available
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    yield chunk.choices[0].delta.content
-
-        # Return a streaming response to the client
-        return StreamingResponse(generate(), media_type="text/plain")
-    
-    except Exception as e:
-        # Handle any errors that occur during processing
-        print("error", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
 
 # Define a health check endpoint to verify API status
 @app.get("/api/health")
@@ -92,8 +57,7 @@ async def health_check():
 # PDF Upload endpoint
 @app.post("/api/upload-pdf")
 async def upload_pdf(
-    file: UploadFile = File(...),
-    api_key: str = Form(...)
+    file: UploadFile = File(...)
 ):
     """Upload and process a PDF file for RAG functionality."""
     try:
@@ -121,11 +85,11 @@ async def upload_pdf(
             # Create vector database with custom embedding model that uses the provided API key
             from aimakerspace.openai_utils.embedding import EmbeddingModel
             
-            # Create a custom embedding model with the provided API key
+            # Create a custom embedding model with the environment API key
             embedding_model = EmbeddingModel()
-            embedding_model.openai_api_key = api_key
-            embedding_model.client = OpenAI(api_key=api_key)
-            embedding_model.async_client = AsyncOpenAI(api_key=api_key)
+            embedding_model.openai_api_key = OPENAI_API_KEY
+            embedding_model.client = OpenAI(api_key=OPENAI_API_KEY)
+            embedding_model.async_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
             
             vector_db = VectorDatabase(embedding_model)
             await vector_db.abuild_from_list(chunks)
@@ -168,11 +132,11 @@ async def rag_chat(request: RAGChatRequest):
         pdf_data = pdf_storage[request.pdf_id]
         vector_db = pdf_data["vector_db"]
         
-        # Update the embedding model with the current API key for search
+        # Update the embedding model with the environment API key for search
         if hasattr(vector_db, 'embedding_model'):
-            vector_db.embedding_model.openai_api_key = request.api_key
-            vector_db.embedding_model.client = OpenAI(api_key=request.api_key)
-            vector_db.embedding_model.async_client = AsyncOpenAI(api_key=request.api_key)
+            vector_db.embedding_model.openai_api_key = OPENAI_API_KEY
+            vector_db.embedding_model.client = OpenAI(api_key=OPENAI_API_KEY)
+            vector_db.embedding_model.async_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
         
         # Search for relevant chunks
         relevant_chunks = vector_db.search_by_text(
@@ -197,7 +161,7 @@ Context from the PDF:
 {context}"""
         
         # Initialize OpenAI client
-        client = OpenAI(api_key=request.api_key)
+        client = OpenAI(api_key=OPENAI_API_KEY)
         
         # Create an async generator function for streaming responses
         async def generate():

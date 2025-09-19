@@ -1,6 +1,6 @@
-# OpenAI Chat API Backend
+# PDF RAG Chat API Backend
 
-This is a FastAPI-based backend service that provides a streaming chat interface using OpenAI's API.
+This is a FastAPI-based backend service that provides a PDF RAG (Retrieval-Augmented Generation) chat interface using OpenAI's API.
 
 ## Prerequisites
 
@@ -21,6 +21,15 @@ source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 pip install fastapi uvicorn openai pydantic
 ```
 
+3. Set up environment variables:
+```bash
+export OPENAI_API_KEY="your_openai_api_key_here"
+```
+Or create a `.env` file in the `api` directory:
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
 ## Running the Server
 
 1. Make sure you're in the `api` directory:
@@ -37,19 +46,29 @@ The server will start on `http://localhost:8000`
 
 ## API Endpoints
 
-### Chat Endpoint
-- **URL**: `/api/chat`
+### PDF Upload Endpoint
+- **URL**: `/api/upload-pdf`
+- **Method**: POST
+- **Request**: Multipart form data with PDF file
+- **Response**: PDF metadata including pdf_id for RAG operations
+
+### RAG Chat Endpoint
+- **URL**: `/api/rag-chat`
 - **Method**: POST
 - **Request Body**:
 ```json
 {
-    "developer_message": "string",
     "user_message": "string",
     "model": "gpt-4.1-mini",  // optional
-    "api_key": "your-openai-api-key"
+    "pdf_id": "string"  // ID from PDF upload
 }
 ```
-- **Response**: Streaming text response
+- **Response**: Streaming text response based on PDF content
+
+### List PDFs Endpoint
+- **URL**: `/api/pdfs`
+- **Method**: GET
+- **Response**: List of uploaded PDFs with metadata
 
 ### Health Check
 - **URL**: `/api/health`
@@ -69,8 +88,17 @@ The API is configured to accept requests from any origin (`*`). This can be modi
 ## Error Handling
 
 The API includes basic error handling for:
+- Missing `OPENAI_API_KEY` environment variable (server startup error)
 - Invalid API keys
 - OpenAI API errors
 - General server errors
 
-All errors will return a 500 status code with an error message. 
+All errors will return a 500 status code with an error message.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes | Your OpenAI API key for authentication |
+
+**Note**: The server will fail to start if the `OPENAI_API_KEY` environment variable is not set. 
