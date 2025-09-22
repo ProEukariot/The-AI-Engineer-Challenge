@@ -13,6 +13,9 @@ import time
 import uuid
 from typing import Optional, Dict, Any
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get OpenAI API key from environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
