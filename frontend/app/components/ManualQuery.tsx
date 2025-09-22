@@ -4,29 +4,14 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, BookOpen, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface Manual {
-  manual_id: string
+  pdf_id: string
   filename: string
   upload_time: string
-  sections: Array<{
-    title: string
-    type: string
-  }>
+  chunks_count: number
 }
 
 interface ManualQueryProps {
   manual: Manual
-}
-
-interface QueryResponse {
-  answer: string
-  relevant_sections: Array<{
-    title: string
-    type: string
-    page_number?: number
-    similarity: number
-    preview: string
-  }>
-  confidence: number
 }
 
 interface Message {
@@ -34,14 +19,6 @@ interface Message {
   type: 'user' | 'assistant'
   content: string
   timestamp: Date
-  relevantSections?: Array<{
-    title: string
-    type: string
-    page_number?: number
-    similarity: number
-    preview: string
-  }>
-  confidence?: number
 }
 
 export default function ManualQuery({ manual }: ManualQueryProps) {
@@ -77,15 +54,15 @@ export default function ManualQuery({ manual }: ManualQueryProps) {
 
     try {
       // Try streaming first
-      const streamResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8002'}/api/query-manual-stream`, {
+      const streamResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/rag-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: inputValue,
-          manual_id: manual.manual_id,
-          model: 'gpt-4'
+          user_message: inputValue,
+          pdf_id: manual.pdf_id,
+          model: 'gpt-4.1'
         }),
       })
 
@@ -116,29 +93,40 @@ export default function ManualQuery({ manual }: ManualQueryProps) {
         setMessages(prev => [...prev, assistantMessage])
         setStreamingResponse('')
       } else {
-        // Fallback to non-streaming
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8002'}/api/query-manual`, {
+        // Fallback to non-streaming (using the same endpoint but without streaming)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/rag-chat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            question: inputValue,
-            manual_id: manual.manual_id,
-            model: 'gpt-4',
-            include_sections: true
+            user_message: inputValue,
+            pdf_id: manual.pdf_id,
+            model: 'gpt-4.1'
           }),
         })
 
         if (response.ok) {
-          const data: QueryResponse = await response.json()
+          // Handle streaming response for fallback as well
+          const reader = response.body?.getReader()
+          const decoder = new TextDecoder()
+          let fullResponse = ''
+
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              const chunk = decoder.decode(value)
+              fullResponse += chunk
+            }
+          }
+
           const assistantMessage: Message = {
             id: (Date.now() + 1).toString(),
             type: 'assistant',
-            content: data.answer,
-            timestamp: new Date(),
-            relevantSections: data.relevant_sections,
-            confidence: data.confidence
+            content: fullResponse,
+            timestamp: new Date()
           }
           setMessages(prev => [...prev, assistantMessage])
         } else {
@@ -159,24 +147,6 @@ export default function ManualQuery({ manual }: ManualQueryProps) {
     }
   }
 
-  const getSectionTypeColor = (type: string) => {
-    switch (type) {
-      case 'procedure':
-        return 'section-procedure'
-      case 'troubleshooting':
-        return 'section-troubleshooting'
-      case 'specification':
-        return 'section-specification'
-      default:
-        return 'section-general'
-    }
-  }
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600'
-    if (confidence >= 0.6) return 'text-yellow-600'
-    return 'text-red-600'
-  }
 
   return (
     <div className="h-[600px] flex flex-col">
@@ -209,37 +179,6 @@ export default function ManualQuery({ manual }: ManualQueryProps) {
                   : 'bg-gray-100 text-gray-900'
               }`}>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                
-                {message.confidence !== undefined && (
-                  <div className="mt-2 flex items-center space-x-2">
-                    <span className="text-xs text-gray-500">Confidence:</span>
-                    <span className={`text-xs font-medium ${getConfidenceColor(message.confidence)}`}>
-                      {Math.round(message.confidence * 100)}%
-                    </span>
-                  </div>
-                )}
-
-                {message.relevantSections && message.relevantSections.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium text-gray-600">Relevant sections:</p>
-                    <div className="space-y-1">
-                      {message.relevantSections.map((section, index) => (
-                        <div key={index} className="text-xs bg-white bg-opacity-50 rounded p-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium">{section.title}</span>
-                            <span className={`section-badge ${getSectionTypeColor(section.type)}`}>
-                              {section.type}
-                            </span>
-                          </div>
-                          <p className="text-gray-600">{section.preview}</p>
-                          {section.page_number && (
-                            <p className="text-gray-500">Page {section.page_number}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

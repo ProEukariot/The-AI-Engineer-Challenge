@@ -4,13 +4,10 @@ import { useState } from 'react'
 import { FileText, Clock, ChevronRight, BookOpen } from 'lucide-react'
 
 interface Manual {
-  manual_id: string
+  pdf_id: string
   filename: string
   upload_time: string
-  sections: Array<{
-    title: string
-    type: string
-  }>
+  chunks_count: number
 }
 
 interface ManualListProps {
@@ -31,17 +28,8 @@ export default function ManualList({ manuals, selectedManual, onSelectManual }: 
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
   }
 
-  const getSectionTypeColor = (type: string) => {
-    switch (type) {
-      case 'procedure':
-        return 'section-procedure'
-      case 'troubleshooting':
-        return 'section-troubleshooting'
-      case 'specification':
-        return 'section-specification'
-      default:
-        return 'section-general'
-    }
+  const getChunkTypeColor = () => {
+    return 'section-general'
   }
 
   if (manuals.length === 0) {
@@ -71,10 +59,10 @@ export default function ManualList({ manuals, selectedManual, onSelectManual }: 
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {filteredManuals.map((manual) => (
           <div
-            key={manual.manual_id}
+            key={manual.pdf_id}
             onClick={() => onSelectManual(manual)}
             className={`p-3 rounded-lg border cursor-pointer transition-all ${
-              selectedManual?.manual_id === manual.manual_id
+              selectedManual?.pdf_id === manual.pdf_id
                 ? 'border-primary-300 bg-primary-50'
                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
             }`}
@@ -93,21 +81,11 @@ export default function ManualList({ manuals, selectedManual, onSelectManual }: 
                   <span>{formatUploadTime(manual.upload_time)}</span>
                 </div>
 
-                {/* Section Types */}
+                {/* Chunk Count */}
                 <div className="flex flex-wrap gap-1">
-                  {manual.sections.slice(0, 3).map((section, index) => (
-                    <span
-                      key={index}
-                      className={`section-badge ${getSectionTypeColor(section.type)}`}
-                    >
-                      {section.type}
-                    </span>
-                  ))}
-                  {manual.sections.length > 3 && (
-                    <span className="text-xs text-gray-500">
-                      +{manual.sections.length - 3} more
-                    </span>
-                  )}
+                  <span className="section-badge section-general">
+                    {manual.chunks_count} chunks
+                  </span>
                 </div>
               </div>
               

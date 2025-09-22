@@ -7,13 +7,10 @@ import ManualQuery from './components/ManualQuery'
 import ManualList from './components/ManualList'
 
 interface Manual {
-  manual_id: string
+  pdf_id: string
   filename: string
   upload_time: string
-  sections: Array<{
-    title: string
-    type: string
-  }>
+  chunks_count: number
 }
 
 export default function Home() {
@@ -27,10 +24,10 @@ export default function Home() {
 
   const fetchManuals = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8002'}/api/manuals`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/pdfs`)
       if (response.ok) {
         const data = await response.json()
-        setManuals(data.manuals)
+        setManuals(data.pdfs)
       }
     } catch (error) {
       console.error('Error fetching manuals:', error)

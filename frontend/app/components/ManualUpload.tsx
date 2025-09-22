@@ -35,7 +35,7 @@ export default function ManualUpload({ onUploaded }: ManualUploadProps) {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8002'}/api/upload-manual`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/upload-pdf`, {
         method: 'POST',
         body: formData,
       })
@@ -43,7 +43,7 @@ export default function ManualUpload({ onUploaded }: ManualUploadProps) {
       if (response.ok) {
         const result = await response.json()
         setUploadStatus('success')
-        setMessage(`Successfully uploaded ${result.filename} with ${result.sections_count} sections`)
+        setMessage(`Successfully uploaded ${result.filename} with ${result.chunks_count} chunks`)
         onUploaded()
       } else {
         const error = await response.json()
